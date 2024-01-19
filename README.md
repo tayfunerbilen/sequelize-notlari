@@ -4,7 +4,9 @@ Bu notlar, 19 ocak 2024 tarihinden itibaren yazilmaya baslanmis olup, bir back-e
 
 Sequelize promise tabanli Postgres, MySQL, MariaDB, SQLite, Microsoft SQL Server, Oracle Database vs.. icin bir ORM aracidir.
 
-## Kurulum
+## Giris
+
+### Kurulum
 
 Herhangi bir paket yoneticisi ile `sequelize` paketini kurmaniz yeterlidir.
 
@@ -26,25 +28,25 @@ bun add tedious # Microsoft SQL Server
 bun add oracledb # Oracle Database
 ```
 
-## Veritabani Baglantisi
+### Veritabani Baglantisi
 
 Veritabani baglantisi icin bir Sequelize instance'i olusturmaniz gerekiyor. Bunu ister tek parametrede baglanti URI'i olarak ya da parametre gecerek yapabiliyorsunuz.
 
 ```js
-const { Sequelize } = require('sequelize');
+import { Sequelize } from 'sequelize';
 
 // Secenek 1: Baglanti URI kullanarak baglanmak
-const sequelize = new Sequelize('sqlite::memory:') // sqlite icin ornek
-const sequelize = new Sequelize('postgres://user:pass@example.com:5432/dbname') // postgres icin ornek
+const db = new Sequelize('sqlite::memory:') // sqlite icin ornek
+const db = new Sequelize('postgres://user:pass@example.com:5432/dbname') // postgres icin ornek
 
 // Secenek 2: Parametre olarak gecme ornegi (sqlite icin)
-const sequelize = new Sequelize({
+const db = new Sequelize({
   dialect: 'sqlite',
   storage: 'path/to/database.sqlite'
 });
 
 // Secenek 3: Parametre olarak gecme ornegi (diger dbler icin)
-const sequelize = new Sequelize('database', 'username', 'password', {
+const db = new Sequelize('database', 'username', 'password', {
   host: 'localhost',
   dialect: /* sunlardan birisi gelebilir: 'mysql' | 'postgres' | 'sqlite' | 'mariadb' | 'mssql' | 'db2' | 'snowflake' | 'oracle' */
 });
@@ -60,7 +62,7 @@ const db = new Sequelize('DBNAME', 'DBUSER', 'DBPASS', {
 })
 ```
 
-## Baglantiyi Test Etmek
+### Baglantiyi Test Etmek
 
 Basarili bir sekilde baglanip baglanmadiginizi test etmek icin `authenticate()` metodunu calistirabilirsiniz.
 
@@ -83,3 +85,136 @@ Veritabanina basariyla baglanildi
 ```
 
 Basarisizsa da hatayi goreceksiniz.
+
+### Baglantiyi Kapatma
+
+Sequelize varsayilan olarak tum sorgular icin baglantiyi acik tutarak ayni baglantiyi kullanmaktadir. Baglantiyi kendiniz kapatmak isterseniz `close()` metodunu kullanabilirsiniz.
+
+```js
+db.close()
+```
+
+> Baglantiyi bir kere kapattiktan sonra bir daha veritabanina erisiminiz olmaz, erismek icin yeni bir Sequelize instance'i olusturmaniz gerekir, unutmayin.
+
+### Yeni Veritabani vs. Mevcut Veritabani
+
+Eger sifirdan bir proje gelistiriyorsaniz ve veritabaniniz henuz bossa, Sequelize veritabaninizdaki tum tablolari otomatik olusturmak icin kullanilabilir.
+
+Eger mevcut bir projeniz ve veritabaniniz varsa sorun degil, Sequelize bunu da basarili sekilde yonetebiliyor.
+
+## Temel Konseptler
+
+### Model (Temeller)
+
+Model, veritabanindaki tabloyu temsil eden bir soyutlamadir. Sequelize'da ise model, `Model` sinifindan extend edilen bir sinif demektir.
+
+Modeller Sequelize'a bir cok sey soyleyebilir, tablo adi, tablonun kolonlari, kolonlarin veri turleri vs.
+
+Her modelin bir ismi olur, bu isim tablo adinizla ayni olmak zorunda degildir. Genelde modeller tekil olarak isimlendirilir, ornegin modelinizin adi `User` olur ancak tablo adiniz `Users` gibi dusunebilirsiniz, bu size kalmis bir tanimlama sekli, istediginiz gibi ayarlayabilirsiniz.
+
+### Model Tanimlama
+
+Modeli 2 farkli birbirine denk yontemle olusturabilirsiniz:
+
+- define() metodu ile tanimlama
+- Model sinifindan extend ederek init() metodu ile tanimlama
+
+Kisaca birinde sinifi sequelize yaratirken, digerinde siz yaratip tanim giriyorsunuz, iki yontemde birbiriyle ayni, hangisi kolayiniza geliyorsa.
+
+Yukaridaki iki farkli metod ile kullanicilari temsil eden bir model olusturalim. Model adimiz `User` olsun ve `firstName`, `lastName` adinda 2 kolonu oldugunu varsayalim. Tablo adimiz ise `users` olsun.
+
+#### define() ile Model Tanimlama
+
+```js
+import { DataTypes } from 'sequelize';
+
+const User = db.define('User', {
+  firstName: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
+  lastName: {
+    type: DataTypes.STRING
+    // allowNull varsayilan olarak true, tanim yapmaniza gerek yok
+  }
+}, {
+  // Model ile ilgili diger ayarlar buraya gelecek
+});
+
+// `sequelize.define` ayni zamanda modeli return eder
+console.log(User === sequelize.models.User); // true
+```
+
+#### Modeli extend Ederek Tanimlama
+
+```js
+import { DataTypes, Model } from 'sequelize';
+
+class User extends Model {}
+
+User.init({
+  firstName: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
+  lastName: {
+    type: DataTypes.STRING
+  }
+}, {
+  sequelize: db, // Baglanti instance'ini belirlememiz gerekiyor
+  modelName: 'User' // Model adini belirlememiz gerekiyor
+});
+
+console.log(User === sequelize.models.User); // true
+```
+
+Fark ettiginiz uzere, tablo adini belirlemedik. Sequelize [inflection](https://www.npmjs.com/package/inflection) adinda bir kutuphane sayesinde cogullastirma islemini kendisi yapiyor. Yani `User` olarak tanımlanan bir modelin tablo karşılığı `users` oluyor. Ya da `Person` olan bir modelin tablo adı `people` oluyor ya da `Category` olan bir modelin tablo adı `categories` oluyor gibi gibi.
+
+Tabi isterseniz model adinizla tablo adinizin ayni olacagini ek bir ayarla belirtebiliyorsunuz:
+
+```js
+import { DataTypes } from 'sequelize';
+
+const User = db.define('Users', {
+  firstName: {
+    type: DataTypes.STRING
+  },
+  lastName: {
+    type: DataTypes.STRING
+  }
+}, {
+  freezeTableName: true
+});
+```
+
+Eger olusturugunuz her model'e bunu her seferinde eklemek istemezseniz, instance'i olustururken de genel bir ayar ekleyebiliyorsunuz:
+
+```js
+const db = new Sequelize('DBNAME', 'DBUSER', 'DBPASS', {
+    host: 'localhost',
+    dialect: 'mysql',
+    define: {
+        freezeTableName: true
+    }
+})
+```
+
+Ya da model isimlerim tekil kalsin ben tablo adini her modelde belirtecegim diyorsaniz da soyle yapabiliyorsunuz:
+
+```js
+import { DataTypes } from 'sequelize';
+
+const User = db.define('Users', {
+  firstName: {
+    type: DataTypes.STRING
+  },
+  lastName: {
+    type: DataTypes.STRING
+  }
+}, {
+  tableName: 'users'
+});
+```
+
+### Model Senkronizasyonu
+
