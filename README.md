@@ -204,7 +204,7 @@ Ya da model isimlerim tekil kalsin ben tablo adini her modelde belirtecegim diyo
 ```js
 import { DataTypes } from 'sequelize';
 
-const User = db.define('Users', {
+const User = db.define('User', {
   firstName: {
     type: DataTypes.STRING
   },
@@ -217,4 +217,12 @@ const User = db.define('Users', {
 ```
 
 ### Model Senkronizasyonu
+
+Bir model tanimladiginizda, Sequelize'a veritabanindaki tablo ile ilgili bilgiler veriyorsunuz. Peki ya tablonuz hic yok ise? Ya da varsa ama kolonlari degismis ise?
+
+Iste bu sebepten oturu model senkronizasyonu bulunuyor. Bunu da `sync()` metodu ile yapabiliyorsunuz. Bu metodu da farkli kullanim sekilleri var, soyle ki:
+
+- `User.sync()` - Bu eger tablo yoksa tabloyu olusturur, varsa hicbir sey yapmaz.
+- `User.sync({ force: true })` - Bu eger tablo varsa once onu kaldirir, sonra tabloyu olusturur.
+- `User.sync({ alter: true })` - Bu veritabanindaki tabloyu analiz eder, hangi kolonlari var, veri tipleri ne vs. diye. Ve model'de bir degisiklik varsa bunu tabloya yansitir. Yani modelde yeni bir kolon tanimladiysaniz, bir kolonun tipini vs. degistirdiyseniz veritabaninda bunu gunceller.
 
