@@ -36,17 +36,17 @@ Veritabani baglantisi icin bir Sequelize instance'i olusturmaniz gerekiyor. Bunu
 import { Sequelize } from 'sequelize';
 
 // Secenek 1: Baglanti URI kullanarak baglanmak
-const db = new Sequelize('sqlite::memory:') // sqlite icin ornek
-const db = new Sequelize('postgres://user:pass@example.com:5432/dbname') // postgres icin ornek
+const sequelize = new Sequelize('sqlite::memory:') // sqlite icin ornek
+const sequelize = new Sequelize('postgres://user:pass@example.com:5432/dbname') // postgres icin ornek
 
 // Secenek 2: Parametre olarak gecme ornegi (sqlite icin)
-const db = new Sequelize({
+const sequelize = new Sequelize({
   dialect: 'sqlite',
   storage: 'path/to/database.sqlite'
 });
 
 // Secenek 3: Parametre olarak gecme ornegi (diger dbler icin)
-const db = new Sequelize('database', 'username', 'password', {
+const sequelize = new Sequelize('database', 'username', 'password', {
   host: 'localhost',
   dialect: /* sunlardan birisi gelebilir: 'mysql' | 'postgres' | 'sqlite' | 'mariadb' | 'mssql' | 'db2' | 'snowflake' | 'oracle' */
 });
@@ -56,7 +56,7 @@ Gunun sonunda mysql bir veritabanina soyle baglaniyoruz:
 
 ```js
 // db.js
-const db = new Sequelize('DBNAME', 'DBUSER', 'DBPASS', {
+const sequelize = new Sequelize('DBNAME', 'DBUSER', 'DBPASS', {
     host: 'localhost',
     dialect: 'mysql'
 })
@@ -67,10 +67,10 @@ const db = new Sequelize('DBNAME', 'DBUSER', 'DBPASS', {
 Basarili bir sekilde baglanip baglanmadiginizi test etmek icin `authenticate()` metodunu calistirabilirsiniz.
 
 ```js
-import {db} from "./db";
+import {sequelize} from "./db";
 
 try {
-    await db.authenticate()
+    await sequelize.authenticate()
     console.log('Veritabanina basariyla baglanildi')
 } catch (e) {
     console.log('Veritabani baglanti hastasi:', e)
@@ -91,7 +91,7 @@ Basarisizsa da hatayi goreceksiniz.
 Sequelize varsayilan olarak tum sorgular icin baglantiyi acik tutarak ayni baglantiyi kullanmaktadir. Baglantiyi kendiniz kapatmak isterseniz `close()` metodunu kullanabilirsiniz.
 
 ```js
-db.close()
+sequelize.close()
 ```
 
 > Baglantiyi bir kere kapattiktan sonra bir daha veritabanina erisiminiz olmaz, erismek icin yeni bir Sequelize instance'i olusturmaniz gerekir, unutmayin.
@@ -128,7 +128,7 @@ Yukaridaki iki farkli metod ile kullanicilari temsil eden bir model olusturalim.
 ```js
 import { DataTypes } from 'sequelize';
 
-const User = db.define('User', {
+const User = sequelize.define('User', {
   firstName: {
     type: DataTypes.STRING,
     allowNull: false
@@ -161,7 +161,7 @@ User.init({
     type: DataTypes.STRING
   }
 }, {
-  sequelize: db, // Baglanti instance'ini belirlememiz gerekiyor
+  sequelize, // Baglanti instance'ini belirlememiz gerekiyor
   modelName: 'User' // Model adini belirlememiz gerekiyor
 });
 
@@ -175,7 +175,7 @@ Tabi isterseniz model adinizla tablo adinizin ayni olacagini ek bir ayarla belir
 ```js
 import { DataTypes } from 'sequelize';
 
-const User = db.define('Users', {
+const User = sequelize.define('Users', {
   firstName: {
     type: DataTypes.STRING
   },
@@ -190,7 +190,7 @@ const User = db.define('Users', {
 Eger olusturugunuz her model'e bunu her seferinde eklemek istemezseniz, instance'i olustururken de genel bir ayar ekleyebiliyorsunuz:
 
 ```js
-const db = new Sequelize('DBNAME', 'DBUSER', 'DBPASS', {
+const sequelize = new Sequelize('DBNAME', 'DBUSER', 'DBPASS', {
     host: 'localhost',
     dialect: 'mysql',
     define: {
@@ -204,7 +204,7 @@ Ya da model isimlerim tekil kalsin ben tablo adini her modelde belirtecegim diyo
 ```js
 import { DataTypes } from 'sequelize';
 
-const User = db.define('User', {
+const User = sequelize.define('User', {
   firstName: {
     type: DataTypes.STRING
   },
@@ -226,3 +226,36 @@ Iste bu sebepten oturu model senkronizasyonu bulunuyor. Bunu da `sync()` metodu 
 - `User.sync({ force: true })` - Bu eger tablo varsa once onu kaldirir, sonra tabloyu olusturur.
 - `User.sync({ alter: true })` - Bu veritabanindaki tabloyu analiz eder, hangi kolonlari var, veri tipleri ne vs. diye. Ve model'de bir degisiklik varsa bunu tabloya yansitir. Yani modelde yeni bir kolon tanimladiysaniz, bir kolonun tipini vs. degistirdiyseniz veritabaninda bunu gunceller.
 
+#### Tüm Modelleri Ayni Anda Senkron Etme
+
+Sequelize instance'iniz butun modelleri bildigi icin, bu instance'in altindaki `sync()` metodunu cagirarak butun modelleri tek seferde senkron edebilirsiniz.
+
+```js
+await sequelize.sync({ force: true });
+console.log("Tum modeller basariyla senkron edildi.");
+```
+
+### Tablolari Kaldirma
+
+Modelle iliskili olan tabloyu kaldirmak icin `drop()` metodunu kullanabilirsiniz.
+
+```js
+await User.drop();
+console.log("User tablosu kaldirildi!");
+```
+
+Tum tablolari kaldirmak icin:
+
+```js
+await sequelize.drop();
+console.log("Tum tablolar kaldirildi!");
+```
+
+### Veritabanı guvenligi
+
+Bildiginiz gibi `sync` ve `drop` islemleri biraz riskli. Bunu production seviyesindeki bir veritabaninda yaparken dikkatli olmakta fayda var. Sequelize bu konuda ek bir ayarda getiriyor.
+
+```js
+// Bu eger veritabani adi '_test' ile bitiyorsa sync islemi yapmanizi saglar
+sequelize.sync({ force: true, match: /_test$/ });
+```
