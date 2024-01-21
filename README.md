@@ -259,3 +259,19 @@ Bildiginiz gibi `sync` ve `drop` islemleri biraz riskli. Bunu production seviyes
 // Bu eger veritabani adi '_test' ile bitiyorsa sync islemi yapmanizi saglar
 sequelize.sync({ force: true, match: /_test$/ });
 ```
+
+### Timestamp
+
+Varsayilan olarak, Sequelize her modele `createdAt` ve `updatedAt` kolonlarini `DataTypes.DATE` tipiyle ekler. Bu sayede bir create ya da update islemi oldugunda Sequelize otomatik olarak bu kolonlari doldurur.
+
+> **Not:** Bu Sequelize seviyesinde gerceklesen bir olaydir. Yani db'den siz bir deger ekleyip guncellediginizde bu tetiklenmez, Sequelize ile yapacaginiz islemler icin bu gecerlidir.
+
+Bu davranisi iptal etmek isterseniz `timestamps: false` ayarini ekleyebilirsiniz.
+
+```js
+sequelize.define('User', {
+  // ...
+}, {
+  timestamps: false
+});
+```
