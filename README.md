@@ -275,3 +275,160 @@ sequelize.define('User', {
   timestamps: false
 });
 ```
+
+Ayrica istediginiz enable/disable etmeniz mumkun, ve varsayilan isimlerini tanimlayabiliyorsunuz:
+
+```js
+sequelize.define('User', {
+  // ...
+}, {
+  timestamps: true,
+  createdAt: false, // olusturma tarihini iptal et,
+  updatedAt: 'updatedStock' // guncellenme tarihinin kolon adini degistir
+});
+```
+
+### Kolon Kisa Tanimi
+
+Eger kolonu tanimlarken sadece veri tipini belirtiyorsaniz, baska bir ayariniz yoksa bunu kisa tanim kullanarakta yapabilirsiniz. Yani sunu:
+
+```js
+sequelize.define('User', {
+  name: {
+    type: DataTypes.STRING
+  }
+});
+```
+
+su sekilde kisaltabilirsiniz:
+
+```js
+sequelize.define('User', {
+  name: DataTypes.STRING
+});
+```
+
+Eger farkli kolon tanimlari da yapacaksaniz, o zaman mecbur uzun yoldan yapmaya devam :)
+
+### Varsayilan Degerler
+
+Varsayilan olarak, Sequelize bir kolonun varsayilan degerini `NULL` kabul eder. Bu davranisi `defaultValue` tanimini ekleyerek degistirebilirsiniz.
+
+```js
+sequelize.define('User', {
+  isMarried: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: true
+  }
+});
+```
+
+Bazi ozel degerler, ornegin `DataTypes.NOW` gibi kabul edilmektedir.
+
+```js
+sequelize.define('Foo', {
+  bar: {
+    type: DataTypes.DATETIME,
+    defaultValue: DataTypes.NOW // bu sekilde bir insert islemi sirasinda zaman kaydedilecektir varsayilan deger olarak
+  }
+});
+```
+
+### Veri Turleri
+
+Modelde tanimladiginz her kolonun bir veri turu olmak zorunda. Sequelize size bir cok veri turuyle ilgili destek sagliyor. Bunun icin zaten yukarida bolca yaptigimiz `DataTypes` objesini import edip icinden kullaniyoruz.
+
+```js
+import { DataTypes } from "sequelize"
+```
+
+#### Strings
+
+```js
+DataTypes.STRING             // VARCHAR(255)
+DataTypes.STRING(1234)       // VARCHAR(1234)
+DataTypes.STRING.BINARY      // VARCHAR BINARY
+DataTypes.TEXT               // TEXT
+DataTypes.TEXT('tiny')       // TINYTEXT
+```
+
+#### Boolean
+
+```js
+DataTypes.BOOLEAN            // TINYINT(1)
+```
+
+#### Numbers
+
+```js
+DataTypes.INTEGER            // INTEGER
+DataTypes.BIGINT             // BIGINT
+DataTypes.BIGINT(11)         // BIGINT(11)
+
+DataTypes.FLOAT              // FLOAT
+DataTypes.FLOAT(11)          // FLOAT(11)
+DataTypes.FLOAT(11, 10)      // FLOAT(11,10)
+
+DataTypes.DOUBLE             // DOUBLE
+DataTypes.DOUBLE(11)         // DOUBLE(11)
+DataTypes.DOUBLE(11, 10)     // DOUBLE(11,10)
+
+DataTypes.DECIMAL            // DECIMAL
+DataTypes.DECIMAL(10, 2)     // DECIMAL(10,2)
+```
+
+#### Unsigned & Zerofill integers
+
+MySQL ve MariaDB'de `INTEGER`, `BIGINT`, `FLOAT` ve `DOUBLE` türleri unsigned ya da zerofill ya da her ikisi olarak ayarlanabiliyor.
+
+`unsigned` - Sadece pozitif degerler atanmasi icin kullanilir. Normalde INT bir veri turu -2,147,483,648 ile 2,147,483,647 arasında değer alabilir. Ancak UNSIGNED kullanıldığında, bu aralık 0 ile 4,294,967,295 arasında olur. Bu, sayısal alanın kapasitesini negatif sayılar yerine daha büyük pozitif sayılar için kullanmayı mümkün kılar.
+
+`Zerofill` - Bu özellik, bir sayısal alanın belirtilen genişliğe ulaşması için alanın soluna sıfır ekler. Eğer alanın uzunluğu belirtilen genişlikten kısa ise, eksik kalan kısımlar sol taraftan sıfırlarla doldurulur. ZEROFILL kullanıldığında otomatik olarak UNSIGNED özelliği de uygulanır, çünkü negatif sayılar sıfır ile doldurulamaz.
+
+```js
+DataTypes.INTEGER.UNSIGNED
+DataTypes.INTEGER(5).ZEROFILL
+DataTypes.INTEGER.UNSIGNED.ZEROFILL
+```
+
+#### Dates
+
+```js
+DataTypes.DATE
+DataTypes.DATEONLY // sadece tarih
+```
+
+#### UUIDs
+
+UUID'ler icin `DataTypes.UUID` kullanabilirsiniz. PostgreSQL ve SQLite icin `UUID` turune, MySQL icin `CHAR(36)` turune denk olacaktir. Sequelize bu alan icin UUID'yi otomatik olusturabilir, varsayilan degere `DataTypes.UUIDV1` ya da `DataTypes.UUIDV4` eklemeniz yeterli.
+
+```js
+{
+  type: DataTypes.UUID,
+  defaultValue: DataTypes.UUIDV4 // Ya da DataTypes.UUIDV1
+}
+```
+
+Geri kalan veri turlerine [suradan](https://sequelize.org/docs/v6/other-topics/other-data-types/) bakabilirsiniz.
+
+### Kolon Ayarlari
+
+- `allowNull` - Varsayilan olarak sequelize kolonu nullable olarak tanimlar. Eger bu alan zorunlu olacaksa `allowNull: false` kullanilabilir.
+- `defaultValue` - Varsayilan bir kolon degeri icin bu ayar kullanilir.
+- `unique` - Kolonun benzersiz bir kolon oldugunu tanimlamak icin `unique: true` kullanilabilir.
+- `primaryKey` - Primary key tanimi icin bu ayar true olarak kullanilabilir.
+- `autoIncrement` - Otomatik artan degerler icin bu ayar true olarak kullanilabilir.
+- `field` - Kolonun adini degistirmek icin bu ayar kullanilabilir.
+- `comment` - MySQL, MariaDB, PostgreSQL ve MSSQL icin kolona yorum eklemek isterseniz bu ayar kullanilabilir.
+
+Ayrica Foreign Key eklemekte mumkun:
+
+```js
+role_id: {
+    type: DataTypes.INTEGER,
+    references: {
+        model: Role,
+        key: 'id'
+    }
+}
+```
