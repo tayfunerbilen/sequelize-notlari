@@ -480,7 +480,7 @@ console.log('Kullanıcı dbye eklendı!');
 
 ### create Metodu
 
-Build edip sonra save etmek istemiyorsaniz, dogrudan kayit icin `save()` metodunu kullanabilirsiniz.
+Build edip sonra save etmek istemiyorsaniz, dogrudan kayit icin `create()` metodunu kullanabilirsiniz.
 
 ```js
 // dbye kayit eder
