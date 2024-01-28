@@ -432,3 +432,188 @@ role_id: {
     }
 }
 ```
+
+## Model Instance'i
+
+Sequeleze'de modeller birer ES6 sinifi, yani bildiginiz javascript class'i. Instance'da veritabaninda bir row'un degerini temsil eden bir obje olarak dusunebilirsiniz.
+
+Bundan sonraki ornekleri su yapi uzerinden inceliyor olacagiz:
+
+```js
+import { Sequelize, Model, DataTypes } from 'sequelize'
+const sequelize = new Sequelize() // db baglantisi ayarlari
+
+const User = sequelize.define("user", {
+  name: DataTypes.TEXT,
+  favoriteColor: {
+    type: DataTypes.TEXT,
+    defaultValue: 'green'
+  },
+  age: DataTypes.INTEGER,
+  cash: DataTypes.INTEGER
+});
+
+(async () => {
+  await sequelize.sync({ force: true });
+  // Code here
+})();
+```
+
+### Instance Olusturma
+
+Model bir sinif olsada, instance olusturmak icin `new` anahtar kelimesiyle ile sinifi baslatmadan `build` metodunu kullaniyoruz.
+
+```js
+const jane = User.build({ name: "Jane" });
+console.log(jane instanceof User); // true
+console.log(jane.name); // "Jane"
+```
+
+Bu sekilde kodumuz henuz veritabani ile bir baglanti gerceklestirmiyor. Bu metod aslinda db'ye uygun bir objeyi bize donduruyor. Gercekten kaydetmek icin `save` metodunu kullaniyoruz.
+
+```js
+await jane.save();
+console.log('Kullanıcı dbye eklendı!');
+```
+
+> `build` ve birkac metod haric Sequelize'de tum metodlar asenkron oldugunu unutmayin.
+
+### create Metodu
+
+Build edip sonra save etmek istemiyorsaniz, dogrudan kayit icin `save()` metodunu kullanabilirsiniz.
+
+```js
+// dbye kayit eder
+const jane = await User.create({ name: "Jane" });
+console.log(jane instanceof User); // true
+console.log(jane.name); // "Tayfun"
+```
+
+### Loglama
+
+Instance'in sonucunu loglamak icin yardimci bir metod olan `toJSON()` kullanabilirsiniz ya da `JSON.stringify` icinde gosterebilirsiniz.
+
+```js
+const jane = await User.create({ name: "Jane" });
+// console.log(jane); // Bunu yapmayin
+console.log(jane.toJSON()); // Boyle harika!
+console.log(jane.stringify(user, null, 4)); // Boyle de harika!
+```
+
+### Varsayilan Degerler
+
+Build metodu otomatik olarak varsayilan degerleri de dondurecektir. Yani kolona bir varsayilan deger eklediyseniz ve insert isleminde bu deger icin bir deger gondermediyseniz otomatik olarak varsayilan degeri kabul edip onu dondurecektir.
+
+```js
+const jane = User.build({ name: "Jane" });
+console.log(jane.favoriteColor); // "green"
+```
+
+### Instance'i Guncelleme
+
+Instance'daki herhangi bir degeri degistirdiginizde, `save()` metodunu cagirmaniz kaydetmesi icin yeterli olacaktir.
+
+```js
+const jane = await User.create({ name: "Jane" });
+console.log(jane.name); // "Jane"
+jane.name = "Ada";
+// db'de isim hala "Jane"
+await jane.save();
+// Simdi db'deki isim "Ada" olarak guncellendi
+```
+
+Birden fazla degeri tek seferde `set` metoduyla da guncelleyebilirsiniz.
+
+```js
+const jane = await User.create({ name: "Jane" });
+jane.cash = 3000
+jane.set({
+  name: "Ada",
+  favoriteColor: "blue"
+});
+// db 'de su an hala degerler guncellenmesi, sadece buna hazirlandi
+await jane.save();
+// simdi db'de de bu degisiklikler uygulandi
+```
+
+Fark ettiginiz uzere, set ile birden fazla degeri guncellemek istedigimizde `save` metoduyla kaydetmemiz gerekiyor, bu da diger degisikliklerin de kaydolmasina sebep oluyor, bunun sadece yaptiginiz degisiklikleri etkilemesini istiyorsaniz `update` metodunu kullanabilirsiniz.
+
+```js
+const jane = await User.create({ name: "Jane" });
+jane.favoriteColor = "blue"
+await jane.update({ name: "Ada" })
+// db'de isim "Ada" olarak guncellendi ancak favoriteColor hala "green" degerinde cunku update sadece icindekileri degistirir
+await jane.save()
+// Artik favoriteColor degisikligi de kaydoldu
+```
+
+### Instance Silme
+
+Silme islemi icin `destroy()` metodunu kullanabilirsiniz.
+
+```js
+const jane = await User.create({ name: "Jane" });
+console.log(jane.name); // "Jane"
+await jane.destroy();
+// dbden silindi
+```
+
+### Instance'i Yeniden Yukleme (reload)
+
+`reload` metoduyla instance'i yeniden yukleyebilirsiniz.
+
+```js
+const jane = await User.create({ name: "Jane" });
+console.log(jane.name); // "Jane"
+jane.name = "Ada";
+// db'de isim hala Jane
+await jane.reload();
+console.log(jane.name); // "Jane"
+```
+
+### Belirli Alanlari Guncelleme
+
+`save` metodu cagrildiginda hangi alanlarin guncellenmesi gerektigini belirtebiliyorsunuz. 
+
+```js
+const jane = await User.create({ name: "Jane" });
+console.log(jane.name); // "Jane"
+console.log(jane.favoriteColor); // "green"
+jane.name = "Jane II";
+jane.favoriteColor = "blue";
+await jane.save({ fields: ['name'] });
+console.log(jane.name); // "Jane II"
+console.log(jane.favoriteColor); // "blue"
+// favoriteColor blue basildi cunku objede degeri blue olarak belirlendi
+// ancak db'de hala green degerinde
+await jane.reload();
+console.log(jane.name); // "Jane II"
+console.log(jane.favoriteColor); // "green"
+```
+
+> `save` metodu cagirildiginda eger bir degisiklik yoksa aninda promise resolve olacaktir ancak bir db query'si olusturmayacaktir.
+
+### Increment ve Decrement
+
+Db'de integer verilerin degerlerini artirmak ya da azaltmak icinde metodlar mevcut:
+
+```js
+const jane = await User.create({ name: "Jane", age: 100 });
+await jane.increment('age'); // +1 artirir
+await jane.increment('age', { by: 2 }) // +2 artirir
+```
+
+birden fazla degeri de tek seferde guncelleyebilirsiniz.
+
+```js
+const jane = await User.create({ name: "Jane", age: 100, cash: 5000 });
+await jane.increment({
+  age: 2,
+  cash: 100
+});
+
+// Eger birden fazla degeri ayni sayida artiracaksaniz da boyle kullanabilirsiniz
+await jane.increment(['age', 'cash'], { by: 2 });
+```
+
+decrement yani azaltma olayi da tahmin edebileceginiz uzere `increment` yerine `decrement` koyarak gerceklestiriyorsunuz.
